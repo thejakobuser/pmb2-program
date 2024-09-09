@@ -53,45 +53,38 @@ class JakobPmb2Extension(omni.ext.IExt):
         else:
             self._world = World.instance()
 
-
+        self._world.scene.add_default_ground_plane(z_position=0.0)
+        # self._world.reset()
+        # self._world.initialize_physics()
 
         self._window = ui.Window("My Window", width=300, height=300)
+
+
         with self._window.frame:
             
-                def load_world():
+                # def load_world():
 
-                    # Check if the world exists
-                    world = self._world
+                #     # Check if the world exists
+                #     world = self._world
 
-                    if world:
-                        print("World exists")
+                #     # Create a new empty world
+                #     world = World()
+                #     world.scene.add_default_ground_plane(z_position=0.0)
+                #     world.reset()
+                #     world.initialize_physics()
 
-                        # world.instance().clear_instance()
-                        # Add a ground plane to the world
-                        world = World.instance()
+                    # if world:
+                    #     print("World exists")
 
-
-                    else:
-                        print("World does not exist")
-
-                    clear_stage()
-
-                    stage = omni.usd.get_context().get_stage()
-                    # Add a physics scene prim to stage
-                    scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/World/physicsScene"))
-                    # Set gravity vector
-                    scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-                    scene.CreateGravityMagnitudeAttr().Set(981.0)
+                    #     # world.instance().clear_instance()
+                    #     # Add a ground plane to the world
+                    #     world = World.instance()
 
 
-                    # Create a new empty world
-                    world = World()
-                    world.scene.add_default_ground_plane(z_position=0.0)
-                    world.reset()
-                    world.initialize_physics()
+                    # else:
+                    #     print("World does not exist")
 
-
-                        
+                             
 
 
 
@@ -238,7 +231,7 @@ class JakobPmb2Extension(omni.ext.IExt):
                     label = ui.Label("PMB2 Simulation")
 
                     # Add a button to load the world
-                    ui.Button("World", clicked_fn=load_world)
+                    # ui.Button("World", clicked_fn=load_world)
                     ui.Button("Cube", clicked_fn=add_cube)
                     ui.Button("Robot", clicked_fn=load_robot)
                     ui.Button("List Joints", clicked_fn=list_joints)
