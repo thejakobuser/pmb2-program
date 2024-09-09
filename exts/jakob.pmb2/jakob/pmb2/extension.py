@@ -9,6 +9,9 @@ from omni.isaac.core.utils.nucleus import get_assets_root_path
 from pxr import Gf, Usd, Sdf, UsdPhysics
 from omni.isaac.core.articulations import ArticulationView
 from omni.isaac.core.physics_context import PhysicsContext
+from omni.isaac.dynamic_control import _dynamic_control
+from omni.isaac.core.utils.stage import clear_stage
+
 
 
 # Functions and vars are available to other extension as usual in python: `example.python_ext.some_public_function(x)`
@@ -34,7 +37,7 @@ class JakobPmb2Extension(omni.ext.IExt):
     # ext_id is current extension id. It can be used with extension manager to query additional information, like where
     # this extension is located on filesystem.
     def on_startup(self, ext_id):
-        print("[jakob.pmb2] jakob pmb2 startup")
+        print("[jakob.pmb2] jakob pmb2 startupa")
 
         stage = omni.usd.get_context().get_stage()
         # Add a physics scene prim to stage
@@ -42,7 +45,6 @@ class JakobPmb2Extension(omni.ext.IExt):
         # Set gravity vector
         scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
         scene.CreateGravityMagnitudeAttr().Set(981.0)
-
 
         PhysicsContext()
 
@@ -60,13 +62,39 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     # Check if the world exists
                     world = self._world
+
                     if world:
                         print("World exists")
 
+                        # world.instance().clear_instance()
                         # Add a ground plane to the world
-                        world.scene.add_default_ground_plane()
+                        world = World.instance()
+
+
                     else:
                         print("World does not exist")
+
+                    clear_stage()
+
+                    stage = omni.usd.get_context().get_stage()
+                    # Add a physics scene prim to stage
+                    scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/World/physicsScene"))
+                    # Set gravity vector
+                    scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
+                    scene.CreateGravityMagnitudeAttr().Set(981.0)
+
+
+                    # Create a new empty world
+                    world = World()
+                    world.scene.add_default_ground_plane(z_position=0.0)
+                    world.reset()
+                    world.initialize_physics()
+
+
+                        
+
+
+
 
                 def add_cube():
                     world = self._world
@@ -85,7 +113,7 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                 def load_panda():
                     world = self._world
-                    world.initialize_physics()
+                    print(world)
 
                     asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
 
@@ -99,25 +127,33 @@ class JakobPmb2Extension(omni.ext.IExt):
                 def panda_articulation():
                     world = self._world
 
-                    # Check if the articulation view already exists
-                    if (self.frankas_view is None):
+                    # Check if the Franka prim exists, if not, load it
+                    franka_prim = world.scene.stage.GetPrimAtPath("/World/Franka_1")
+                    if not franka_prim.IsValid():
+                        asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
+                        add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
+                        print("Franka robot loaded")
+
+                    # Ensure the world is updated
+                    world.reset()
+
+                    # Create or update the articulation view
+                    if self.frankas_view is None or not self.frankas_view.initialized:
                         self.frankas_view = ArticulationView(prim_paths_expr="/World/Franka_1", name="frankas_view")
                         world.scene.add(self.frankas_view)
-                        world.initialize_physics()
                         print("Franka articulation view created:", self.frankas_view)
                     else:
                         print("Using existing Franka articulation view:", self.frankas_view)
 
                     # Set root body pose for a single Franka robot
-                    position = np.array([-1.0, 1.0, 0])  # Position the robot at (-1, 1, 0)
-                    orientation = np.array([1.0, 0.0, 0.0, 0.0])  # Default orientation (no rotation)
+                    position = np.array([-1.0, 1.0, 0])
+                    orientation = np.array([1.0, 0.0, 0.0, 0.0])
                     self.frankas_view.set_world_poses(positions=position.reshape(1, 3), orientations=orientation.reshape(1, 4))
 
                     # Set the joint positions for the single articulation
                     joint_positions = np.array([1, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785, 0.04, 0.04])
                     self.frankas_view.set_joint_positions(joint_positions.reshape(1, -1))
 
-                    world.initialize_physics()
                     print("Franka robot position and joint positions updated")
 
                 def load_robot():
@@ -185,6 +221,18 @@ class JakobPmb2Extension(omni.ext.IExt):
                     # left_wheel_joint.set_drive_velocity(1.0)  # Adjust the velocity as needed
                     # right_wheel_joint.set_drive_velocity(1.0)  # Adjust the velocity as needed
 
+                def drive_panda():
+                    world = self._world
+                    vehicle = self.frankas_view
+
+                    dc = _dynamic_control.acquire_dynamic_control_interface()
+                    articulation = dc.get_articulation("/World/Franka_1")
+                    dc.wake_up_articulation(articulation)
+                    dof_ptr = dc.find_articulation_dof(articulation, "panda_joint2")
+                    dc.set_dof_position_target(dof_ptr, 0)
+
+                    print("Driving the robot")
+
 
                 with ui.VStack(spacing=5):
                     label = ui.Label("PMB2 Simulation")
@@ -197,6 +245,7 @@ class JakobPmb2Extension(omni.ext.IExt):
                     ui.Button("Drive robot", clicked_fn=drive_robot)
                     ui.Button("Panda", clicked_fn=load_panda)
                     ui.Button("Panda Articulation", clicked_fn=panda_articulation)
+                    ui.Button("Drive Panda", clicked_fn=drive_panda)
 
 
 
