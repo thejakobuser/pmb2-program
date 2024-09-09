@@ -3,6 +3,8 @@ import omni.ext
 import omni.ui as ui
 from omni.isaac.core import World
 from omni.isaac.core.objects import DynamicCuboid  # Add this import
+from omni.isaac.core.utils.stage import add_reference_to_stage
+
 
 
 
@@ -66,8 +68,30 @@ class JakobPmb2Extension(omni.ext.IExt):
                     else:
                         print("World does not exist")
 
-                    
+                def load_robot():
+                    world = self._world
 
+                    # Define the path to the robot asset
+                    asset_path = r"C:/Users/lakfe/Desktop/simulation/old/pmb/pmb.usd"
+
+                    # Load the robot into the stage
+                    add_reference_to_stage(asset_path, "/World/pmb")
+
+
+                def list_joints():
+                    world = self._world
+                    if world:
+                        print("Listing all joints under /World/pmb:")
+                        pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb")
+                        if pmb_prim:
+                            from pxr import Usd, UsdPhysics
+                            for prim in Usd.PrimRange(pmb_prim):
+                                if prim.IsA(UsdPhysics.Joint):
+                                    print(prim.GetPath())
+                        else:
+                            print("/World/pmb prim not found")
+                    else:
+                        print("World does not exist")
 
                 # Stack the buttons horizontally
                 with ui.VStack(spacing=5):
@@ -76,15 +100,8 @@ class JakobPmb2Extension(omni.ext.IExt):
                     # Add a button to load the world
                     ui.Button("World", clicked_fn=load_world)
                     ui.Button("Cube", clicked_fn=add_cube)
-
-
-                    # world.scene.add_default_ground_plane()
-
-                    
-
-                # def load_robot():
-                    
-                    
+                    ui.Button("Robot", clicked_fn=load_robot)
+                    ui.Button("List Joints", clicked_fn=list_joints)
 
 
 
