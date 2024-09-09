@@ -24,6 +24,7 @@ class JakobPmb2Extension(omni.ext.IExt):
 
     def __init__(self) -> None:
         super().__init__()
+        self.frankas_view = None
         self._world = None
         self.vehicle = None
         self._current_tasks = None
@@ -46,7 +47,7 @@ class JakobPmb2Extension(omni.ext.IExt):
         PhysicsContext()
 
         if World.instance() is None:
-            self._world = World(**self._world_settings)  # Pass your world settings if needed
+            self._world = World()  # Pass your world settings if needed
         else:
             self._world = World.instance()
 
@@ -88,24 +89,36 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
 
+                    print("11111 hihihi hohoho hahah")
+
+
 
                     add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
 
-                    frankas_view = ArticulationView(prim_paths_expr="/World/Franka_[1]", name="frankas_view")
-                    world.scene.add(frankas_view)
+                   
+                def panda_articulation():
+                    world = self._world
 
-                    world.reset()
+                    # Check if the articulation view already exists
+                    if (self.frankas_view is None):
+                        self.frankas_view = ArticulationView(prim_paths_expr="/World/Franka_1", name="frankas_view")
+                        world.scene.add(self.frankas_view)
+                        world.initialize_physics()
+                        print("Franka articulation view created:", self.frankas_view)
+                    else:
+                        print("Using existing Franka articulation view:", self.frankas_view)
 
-                    # batch process articulations via an ArticulationView
-                    frankas_view = ArticulationView(prim_paths_expr="/World/Franka_[1]", name="frankas_view")
-                    world.scene.add(frankas_view)
+                    # Set root body pose for a single Franka robot
+                    position = np.array([-1.0, 1.0, 0])  # Position the robot at (-1, 1, 0)
+                    orientation = np.array([1.0, 0.0, 0.0, 0.0])  # Default orientation (no rotation)
+                    self.frankas_view.set_world_poses(positions=position.reshape(1, 3), orientations=orientation.reshape(1, 4))
 
-                    # set root body poses
-                    new_positions = np.array([[-1.0, 1.0, 0]])
-                    frankas_view.set_world_poses(positions=new_positions)
-                    # set the joint positions for each articulation
-                    frankas_view.set_joint_positions(np.array([[1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]]))
+                    # Set the joint positions for the single articulation
+                    joint_positions = np.array([1, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785, 0.04, 0.04])
+                    self.frankas_view.set_joint_positions(joint_positions.reshape(1, -1))
 
+                    world.initialize_physics()
+                    print("Franka robot position and joint positions updated")
 
                 def load_robot():
                     world = self._world
@@ -173,9 +186,6 @@ class JakobPmb2Extension(omni.ext.IExt):
                     # right_wheel_joint.set_drive_velocity(1.0)  # Adjust the velocity as needed
 
 
-
-
-                # Stack the buttons horizontally
                 with ui.VStack(spacing=5):
                     label = ui.Label("PMB2 Simulation")
 
@@ -186,6 +196,7 @@ class JakobPmb2Extension(omni.ext.IExt):
                     ui.Button("List Joints", clicked_fn=list_joints)
                     ui.Button("Drive robot", clicked_fn=drive_robot)
                     ui.Button("Panda", clicked_fn=load_panda)
+                    ui.Button("Panda Articulation", clicked_fn=panda_articulation)
 
 
 
