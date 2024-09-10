@@ -6,7 +6,7 @@ from omni.isaac.core import World
 from omni.isaac.core.objects import DynamicCuboid  # Add this import
 from omni.isaac.core.utils.stage import add_reference_to_stage
 from omni.isaac.core.utils.nucleus import get_assets_root_path
-from pxr import Gf, Usd, Sdf, UsdPhysics
+from pxr import Gf, Usd, Sdf, UsdPhysics, UsdGeom
 from omni.isaac.core.articulations import ArticulationView
 from omni.isaac.core.physics_context import PhysicsContext
 from omni.isaac.dynamic_control import _dynamic_control
@@ -48,29 +48,6 @@ class JakobPmb2Extension(omni.ext.IExt):
 
 
         with self._window.frame:
-            
-                # def load_world():
-
-                #     # Check if the world exists
-                #     world = self._world
-
-                #     # Create a new empty world
-                #     world = World()
-                #     world.scene.add_default_ground_plane(z_position=0.0)
-                #     world.reset()
-                #     world.initialize_physics()
-
-                    # if world:
-                    #     print("World exists")
-
-                    #     # world.instance().clear_instance()
-                    #     # Add a ground plane to the world
-                    #     world = World.instance()
-
-
-                    # else:
-                    #     print("World does not exist")
-
                              
                 def set_stage():
                     # stage must be set after the simulation is fully loaded
@@ -90,8 +67,6 @@ class JakobPmb2Extension(omni.ext.IExt):
                         self._world = World.instance()
 
                     self._world.scene.add_default_ground_plane(z_position=0.0)
-
-
 
                 def add_cube():
                     world = self._world
@@ -113,35 +88,18 @@ class JakobPmb2Extension(omni.ext.IExt):
                     print(world)
 
                     asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
-
-                    print("11111 hihihi hohoho hahah")
-
-
-
                     add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
 
                 def pmb_articulation():
                     world = self._world
                     print(world)
 
-                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb")
-                    print(pmb_prim)
-
-                    # if not pmb_prim.IsValid():
-                    #     asset_path = get_assets_root_path() + "/Isaac/Robots/PMB2/pmb2.usd"
-                    #     add_reference_to_stage(usd_path=asset_path, prim_path="/World/pmb")
-                    #     print("PMB2 robot loaded")
-
-
                     if self.pmb_view is None:
-                        self.pmb_view = ArticulationView(prim_paths_expr="/World/pmb", name="pmb_view")
+                        self.pmb_view = ArticulationView(prim_paths_expr="/World/pmb/pmb2_base", name="pmb_view")
                         world.scene.add(self.pmb_view)
                         print("PMB articulation view created:", self.pmb_view)
                     else:
-                        print("Using existing PMB articulation view:", self.pmb_view)
-
-                    print(self.pmb_view)
-                    
+                        print("Using existing PMB articulation view:", self.pmb_view)                 
 
                     position = np.array([1.0, 0.0, 0.0])
                     orientation = np.array([1.0, 0.0, 0.0, 0.0])
@@ -187,13 +145,13 @@ class JakobPmb2Extension(omni.ext.IExt):
                     world = self._world
 
                     # Define the path to the robot asset
-                    asset_path = r"C:/Users/lakfe/Desktop/simulation/old/pmb/pmb2_base.usd"
+                    asset_path = r"C:\Users\lakfe\Desktop\pmb2-program\simulations\pmb_mod.usd"
 
                     # Load the robot into the stage
-                    add_reference_to_stage(asset_path, "/World/pmb")
+                    add_reference_to_stage(asset_path, "/World")
 
                     # Check if the robot is loaded
-                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb")
+                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb/pmb2_base")
                     if not pmb_prim:
                         print("Failed to load robot at /World/pmb")
                         return
@@ -218,14 +176,14 @@ class JakobPmb2Extension(omni.ext.IExt):
                 # List all joints of robot
                 def list_joints():
                     world = self._world
-                    print("Listing all joints under /World/pmb:")
-                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb")
+                    print("Listing all joints under /World/pmb/pmb2_base:")
+                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb/pmb2_base")
                     if pmb_prim:
                         for prim in Usd.PrimRange(pmb_prim):
                             if prim.IsA(UsdPhysics.Joint):
                                 print(prim.GetPath())
                     else:
-                        print("/World/pmb prim not found")
+                        print("/World/pmb/pmb2_base prim not found")
 
 
                 # Drive the robot
@@ -282,6 +240,41 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     print("Driving the robot")
 
+                def load_MM():
+                    world = self._world
+                    print(world)
+
+                    asset_path = r"C:\Users\lakfe\Desktop\pmb2-program\simulations\panda_pmb_mod.usd"
+                    add_reference_to_stage(asset_path, "/World/panda_pmb")
+
+                    stage = omni.usd.get_context().get_stage()
+                    panda_pmb_prim = stage.GetPrimAtPath("/World/panda_pmb")
+                    panda_pmb_xform = UsdGeom.Xformable(panda_pmb_prim)
+                    
+                    # Retrieve all transformation operations for the prim
+                    xform_ops = panda_pmb_xform.GetOrderedXformOps()
+
+                    # Find if there's an existing scale operation
+                    scale_op = None
+                    for op in xform_ops:
+                        if op.GetOpType() == UsdGeom.XformOp.TypeScale:
+                            scale_op = op
+                            break
+                    
+                    # If scale operation exists, update it; otherwise, add a new one
+                    if scale_op:
+                        scale_op.Set(value=(0.01, 0.01, 0.01))
+                    else:
+                        print("No scale operation exists, adding a new one.")
+                        panda_pmb_xform.AddScaleOp(UsdGeom.XformOp.PrecisionFloat).Set(value=(0.01, 0.01, 0.01))
+
+
+
+                    # if not pmb_prim:
+                    #     print("Failed to load robot at /World/pmb")
+                    #     return
+
+
 
                 with ui.VStack(spacing=5):
                     label = ui.Label("PMB2 Simulation")
@@ -289,11 +282,14 @@ class JakobPmb2Extension(omni.ext.IExt):
                     # Add a button to load the world
                     # ui.Button("World", clicked_fn=load_world)
                     ui.Button("Stage", clicked_fn=set_stage)
+                    ui.Line()
+                    ui.Button("Mobile Manipulator", clicked_fn=load_MM)
+                    ui.Line()
                     ui.Button("Cube", clicked_fn=add_cube)
-                    ui.Button("Robot", clicked_fn=load_robot)
+                    ui.Button("PMB", clicked_fn=load_robot)
                     ui.Button("PMB Articulation", clicked_fn=pmb_articulation)
-                    ui.Button("List Joints", clicked_fn=list_joints)
-                    ui.Button("Drive robot", clicked_fn=drive_robot)
+                    ui.Button("PMB List Joints", clicked_fn=list_joints)
+                    ui.Button("Drive PMB", clicked_fn=drive_robot)
                     ui.Button("Panda", clicked_fn=load_panda)
                     ui.Button("Panda Articulation", clicked_fn=panda_articulation)
                     ui.Button("Drive Panda", clicked_fn=drive_panda)
