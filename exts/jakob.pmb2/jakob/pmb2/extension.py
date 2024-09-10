@@ -39,21 +39,7 @@ class JakobPmb2Extension(omni.ext.IExt):
     def on_startup(self, ext_id):
         print("[jakob.pmb2] jakob pmb2 startupa")
 
-        stage = omni.usd.get_context().get_stage()
-        # Add a physics scene prim to stage
-        scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/World/physicsScene"))
-        # Set gravity vector
-        scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
-        scene.CreateGravityMagnitudeAttr().Set(981.0)
-
-        PhysicsContext()
-
-        if World.instance() is None:
-            self._world = World()  # Pass your world settings if needed
-        else:
-            self._world = World.instance()
-
-        self._world.scene.add_default_ground_plane(z_position=0.0)
+ 
         # self._world.reset()
         # self._world.initialize_physics()
 
@@ -85,7 +71,24 @@ class JakobPmb2Extension(omni.ext.IExt):
                     #     print("World does not exist")
 
                              
+                def set_stage():
+                    # stage must be set after the simulation is fully loaded
 
+                    stage = omni.usd.get_context().get_stage()
+                    # Add a physics scene prim to stage
+                    scene = UsdPhysics.Scene.Define(stage, Sdf.Path("/World/physicsScene"))
+                    # Set gravity vector
+                    scene.CreateGravityDirectionAttr().Set(Gf.Vec3f(0.0, 0.0, -1.0))
+                    scene.CreateGravityMagnitudeAttr().Set(981.0)
+
+                    PhysicsContext()
+
+                    if World.instance() is None:
+                        self._world = World()  # Pass your world settings if needed
+                    else:
+                        self._world = World.instance()
+
+                    self._world.scene.add_default_ground_plane(z_position=0.0)
 
 
 
@@ -232,6 +235,7 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     # Add a button to load the world
                     # ui.Button("World", clicked_fn=load_world)
+                    ui.Button("Stage", clicked_fn=set_stage)
                     ui.Button("Cube", clicked_fn=add_cube)
                     ui.Button("Robot", clicked_fn=load_robot)
                     ui.Button("List Joints", clicked_fn=list_joints)
