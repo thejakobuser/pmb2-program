@@ -28,6 +28,7 @@ class JakobPmb2Extension(omni.ext.IExt):
     def __init__(self) -> None:
         super().__init__()
         self.frankas_view = None
+        self.pmb_view = None
         self._world = None
         self.vehicle = None
         self._current_tasks = None
@@ -119,19 +120,49 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
 
+                def pmb_articulation():
+                    world = self._world
+                    print(world)
+
+                    pmb_prim = world.scene.stage.GetPrimAtPath("/World/pmb")
+                    print(pmb_prim)
+
+                    # if not pmb_prim.IsValid():
+                    #     asset_path = get_assets_root_path() + "/Isaac/Robots/PMB2/pmb2.usd"
+                    #     add_reference_to_stage(usd_path=asset_path, prim_path="/World/pmb")
+                    #     print("PMB2 robot loaded")
+
+
+                    if self.pmb_view is None:
+                        self.pmb_view = ArticulationView(prim_paths_expr="/World/pmb", name="pmb_view")
+                        world.scene.add(self.pmb_view)
+                        print("PMB articulation view created:", self.pmb_view)
+                    else:
+                        print("Using existing PMB articulation view:", self.pmb_view)
+
+                    print(self.pmb_view)
+                    
+
+                    position = np.array([1.0, 0.0, 0.0])
+                    orientation = np.array([1.0, 0.0, 0.0, 0.0])
+                    self.pmb_view.set_world_poses(positions=position.reshape(1, 3), orientations=orientation.reshape(1, 4))
+
+                    print("PMB articulation view position and orientation updated")
+
                    
                 def panda_articulation():
                     world = self._world
+                    print(world)
 
                     # Check if the Franka prim exists, if not, load it
                     franka_prim = world.scene.stage.GetPrimAtPath("/World/Franka_1")
-                    if not franka_prim.IsValid():
-                        asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
-                        add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
-                        print("Franka robot loaded")
+                    # if not franka_prim.IsValid():
+                    #     asset_path = get_assets_root_path() + "/Isaac/Robots/Franka/franka_alt_fingers.usd"
+                    #     add_reference_to_stage(usd_path=asset_path, prim_path="/World/Franka_1")
+                    #     print("Franka robot loaded")
 
                     # Ensure the world is updated
-                    world.reset()
+                    # world.reset()
 
                     # Create or update the articulation view
                     if self.frankas_view is None or not self.frankas_view.initialized:
@@ -156,7 +187,7 @@ class JakobPmb2Extension(omni.ext.IExt):
                     world = self._world
 
                     # Define the path to the robot asset
-                    asset_path = r"C:/Users/lakfe/Desktop/simulation/old/pmb/pmb.usd"
+                    asset_path = r"C:/Users/lakfe/Desktop/simulation/old/pmb/pmb2_base.usd"
 
                     # Load the robot into the stage
                     add_reference_to_stage(asset_path, "/World/pmb")
@@ -201,11 +232,31 @@ class JakobPmb2Extension(omni.ext.IExt):
                 def drive_robot():
                     world = self._world
                     vehicle = self.vehicle
+                    stage = omni.usd.get_context().get_stage()
+
+                    # pmb_wheel_leff_drive = UsdPhysics.DriveAPI.Get(stage, "/World/pmb/suspension_left_link/wheel_left_joint")
+                    # pmb_wheel_right_drive = UsdPhysics.DriveAPI.Get(stage, "/World/pmb/suspension_right_link/wheel_right_joint")
 
                     print("Driving the robot")
+
+                    dc = _dynamic_control.acquire_dynamic_control_interface()
+                    articulation = dc.get_articulation("/World/pmb/pmb2_base/base_link")
+                    print("Articulation:")
+                    print(articulation)
+                    articulation_joints = dc.get_articulation_joint_count(articulation)
+                    print("Articulation joints:")
+                    print(articulation_joints)
+
+                    dc.wake_up_articulation(articulation)
+                    dof_ptr = dc.find_articulation_dof(articulation, "wheel_left_joint")
+                    dc.set_dof_position_target(dof_ptr, 0)  
+                    dc.set_dof_velocity_target(dof_ptr, 100.0)
+                    dof_ptr = dc.find_articulation_dof(articulation, "wheel_right_joint")
+                    dc.set_dof_position_target(dof_ptr, 0)  
+                    dc.set_dof_velocity_target(dof_ptr, 100.0)
+
                     # if not vehicle.handles_initialized:
 
-                    print(vehicle.initialized)
 
                     # vehicle.dof_properties["stiffness"].Set(1000)
 
@@ -223,6 +274,8 @@ class JakobPmb2Extension(omni.ext.IExt):
 
                     dc = _dynamic_control.acquire_dynamic_control_interface()
                     articulation = dc.get_articulation("/World/Franka_1")
+                    print("Articulation:")
+                    print(articulation)
                     dc.wake_up_articulation(articulation)
                     dof_ptr = dc.find_articulation_dof(articulation, "panda_joint2")
                     dc.set_dof_position_target(dof_ptr, 0)
@@ -238,6 +291,7 @@ class JakobPmb2Extension(omni.ext.IExt):
                     ui.Button("Stage", clicked_fn=set_stage)
                     ui.Button("Cube", clicked_fn=add_cube)
                     ui.Button("Robot", clicked_fn=load_robot)
+                    ui.Button("PMB Articulation", clicked_fn=pmb_articulation)
                     ui.Button("List Joints", clicked_fn=list_joints)
                     ui.Button("Drive robot", clicked_fn=drive_robot)
                     ui.Button("Panda", clicked_fn=load_panda)
